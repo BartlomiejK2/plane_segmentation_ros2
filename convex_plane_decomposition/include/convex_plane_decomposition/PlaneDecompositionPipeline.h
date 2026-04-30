@@ -49,6 +49,9 @@ class PlaneDecompositionPipeline {
   /// Access to the Pipeline result.
   PlanarTerrain& getPlanarTerrain() { return planarTerrain_; }
 
+  /// Move the Pipeline result.
+  PlanarTerrain movePlanarTerrain() { return std::move(planarTerrain_); }
+
   /// Fills in the resulting segmentation into a gridmap layer data.
   void getSegmentation(grid_map::GridMap::Matrix& segmentation) const;
 
