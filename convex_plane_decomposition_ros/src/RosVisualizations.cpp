@@ -1,6 +1,7 @@
 #include "convex_plane_decomposition_ros/RosVisualizations.h"
 
 #include <geometry_msgs/msg/point32.hpp>
+#include <rclcpp/time.hpp>
 
 namespace convex_plane_decomposition {
 
@@ -135,7 +136,8 @@ visualization_msgs::msg::MarkerArray convertBoundariesToRosMarkers(
     grid_map::Time time,
     double lineWidth) {
   std_msgs::msg::Header header;
-  header.stamp.nanosec = time;
+  // grid_map::Time is in nanoseconds
+  header.stamp = rclcpp::Time(static_cast<int64_t>(time));
   header.frame_id = frameId;
 
   visualization_msgs::msg::Marker deleteMarker;
@@ -164,7 +166,8 @@ visualization_msgs::msg::MarkerArray convertInsetsToRosMarkers(
     grid_map::Time time,
     double lineWidth) {
   std_msgs::msg::Header header;
-  header.stamp.nanosec = time;
+  // grid_map::Time is in nanoseconds
+  header.stamp = rclcpp::Time(static_cast<int64_t>(time));
   header.frame_id = frameId;
 
   visualization_msgs::msg::Marker deleteMarker;

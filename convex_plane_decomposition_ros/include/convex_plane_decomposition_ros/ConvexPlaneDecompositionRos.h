@@ -36,8 +36,13 @@ class ConvexPlaneExtractionROS {
    */
   void callback(const grid_map_msgs::msg::GridMap& message);
 
-  Eigen::Isometry3d getTransformToTargetFrame(const std::string& sourceFrame,
-                                              const rclcpp::Time& time);
+  /**
+   * Looks up transform from sourceFrame to the target frame.
+   * @return false if the transform is not available
+   */
+  bool getTransformToTargetFrame(const std::string& sourceFrame,
+                                 const rclcpp::Time& time,
+                                 Eigen::Isometry3d& transformation);
 
   // Parameters
   rclcpp::Node::SharedPtr node_;

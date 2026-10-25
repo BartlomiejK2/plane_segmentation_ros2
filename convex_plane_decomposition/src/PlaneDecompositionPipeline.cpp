@@ -15,6 +15,9 @@ void PlaneDecompositionPipeline::update(grid_map::GridMap&& gridMap, const std::
   planarTerrain_.planarRegions.clear();
   planarTerrain_.gridMap = std::move(gridMap);
 
+  // All pipeline steps index the layer data directly, which assumes the default (0, 0) start index
+  planarTerrain_.gridMap.convertToDefaultStartIndex();
+
   preprocessTimer_.startTimer();
   preprocessing_.preprocess(planarTerrain_.gridMap, elevationLayer);
   preprocessTimer_.endTimer();

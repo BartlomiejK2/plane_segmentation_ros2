@@ -59,7 +59,7 @@ CgalPoint2d projectToPlanarRegion(const CgalPoint2d& queryProjectedToPlane, cons
   const auto* const insetPtrContainingPoint = findInsetContainingThePoint(queryProjectedToPlane, planarRegion.boundaryWithInset.insets);
 
   // Compute the projection
-  CgalPoint2d projectedPoint;
+  CgalPoint2d projectedPoint = queryProjectedToPlane;
   if (insetPtrContainingPoint == nullptr) {
     // Not inside any of the insets. Need to look for the closest one. The projection will be to the boundary
     double minDistSquared = std::numeric_limits<double>::max();
@@ -125,6 +125,11 @@ PlanarTerrainProjection getBestPlanarRegionAtPositionInWorld(const Eigen::Vector
   for (const auto& regionInfo : sortedRegions) {
     // Skip based on lower bound
     if (distanceCostLowerbound(regionInfo.boundingBoxSquareDistance) > projection.cost) {
+      continue;
+    }
+
+    // Region without inset has no area to project to (possible for regions received in a message)
+    if (regionInfo.regionPtr->boundaryWithInset.insets.empty()) {
       continue;
     }
 

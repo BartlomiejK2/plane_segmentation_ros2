@@ -31,8 +31,8 @@ LookupResult maxValueBetweenLocations(const grid_map::Position& position1,
        !iterator.isPastEnd(); ++iterator) {
     const grid_map::Index index = *iterator;
     const auto value = data(index(0), index(1));
-    if (std::isfinite(value)) {
-      searchMaxValue = std::max(searchMaxValue, value);
+    if (std::isfinite(value) && value > searchMaxValue) {
+      searchMaxValue = value;
       maxIndex = index;
     }
   }

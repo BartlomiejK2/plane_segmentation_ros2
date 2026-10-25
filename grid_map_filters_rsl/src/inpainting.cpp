@@ -18,6 +18,8 @@
 
 // stl.
 #include <limits>
+#include <stdexcept>
+#include <vector>
 
 namespace grid_map {
 namespace inpainting {
@@ -267,41 +269,45 @@ void resample(grid_map::GridMap& map, const std::string& layer, double newRes) {
     return;
   }
 
-  // Layers to be resampled.
-  std::vector<std::string> layer_names;
-  if (layer == "all") {
-    layer_names = map.getLayers();
-  } else {
-    layer_names.push_back(layer);
+  // Changing the geometry resizes every layer, so all layers have to be resampled to stay valid.
+  if (layer != "all" && !map.exists(layer)) {
+    throw std::out_of_range("[resample]: No map layer '" + layer + "' available.");
   }
+  const std::vector<std::string> layer_names = map.getLayers();
 
+  // Compute new dimensions.
+  const double scaling = oldRes / newRes;
+  const int width = int(oldSize[1] * scaling);
+  const int height = int(oldSize[0] * scaling);
+  const cv::Size dim{width, height};
+
+  // Compute true new resolution. Might be slightly different due to rounding.
+  // Take average of both dimensions.
+  const grid_map::Size newSize = {height, width};
+  const double trueNewRes = 0.5 * ((oldSize[0] * oldRes) / newSize[0] +
+                                   (oldSize[1] * oldRes) / newSize[1]);
+
+  // Resample all layers before the geometry change
+  std::vector<Eigen::MatrixXf> resampledLayers;
+  resampledLayers.reserve(layer_names.size());
   for (const auto& layer_name : layer_names) {
-    Eigen::MatrixXf elevationMap = std::move(map.get(layer_name));
-
     // Convert elevation map to open-cv image.
     cv::Mat elevationImage;
-    cv::eigen2cv(elevationMap, elevationImage);
-
-    // Compute new dimensions.
-    const double scaling = oldRes / newRes;
-    int width = int(elevationImage.size[1] * scaling);
-    int height = int(elevationImage.size[0] * scaling);
-    cv::Size dim{width, height};
+    cv::eigen2cv(map.get(layer_name), elevationImage);
 
     // Resize image
     cv::Mat resizedImage;
     cv::resize(elevationImage, resizedImage, dim, 0, 0, cv::INTER_LINEAR);
+
+    Eigen::MatrixXf elevationMap;
     cv::cv2eigen(resizedImage, elevationMap);
+    resampledLayers.push_back(std::move(elevationMap));
+  }
 
-    // Compute true new resolution. Might be slightly different due to rounding.
-    // Take average of both dimensions.
-    grid_map::Size newSize = {elevationMap.rows(), elevationMap.cols()};
-    newRes = 0.5 * ((oldSize[0] * oldRes) / newSize[0] +
-                    (oldSize[1] * oldRes) / newSize[1]);
-
-    // Store new map.
-    map.setGeometry({newSize[0] * newRes, newSize[1] * newRes}, newRes, oldPos);
-    map.get(layer_name) = std::move(elevationMap);
+  // Store new map.
+  map.setGeometry({newSize[0] * trueNewRes, newSize[1] * trueNewRes}, trueNewRes, oldPos);
+  for (size_t i = 0; i < layer_names.size(); ++i) {
+    map.get(layer_names[i]) = std::move(resampledLayers[i]);
   }
 }
 }  // namespace inpainting

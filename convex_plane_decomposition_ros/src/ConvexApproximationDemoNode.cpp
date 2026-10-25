@@ -92,29 +92,35 @@ int main(int argc, char** argv) {
         const auto projection = getBestPlanarRegionAtPositionInWorld(
             query, planarTerrainPtr->planarRegions, penaltyFunction);
 
-        int numberOfVertices = 16;
-        double growthFactor = 1.05;
-        const auto convexRegion =
-            convex_plane_decomposition::growConvexPolygonInsideShape(
-                projection.regionPtr->boundaryWithInset.boundary,
-                projection.positionInTerrainFrame, numberOfVertices,
-                growthFactor);
+        // Terrain without planar regions has nothing to project to
+        if (projection.regionPtr != nullptr) {
+          int numberOfVertices = 16;
+          double growthFactor = 1.05;
+          const auto convexRegion =
+              convex_plane_decomposition::growConvexPolygonInsideShape(
+                  projection.regionPtr->boundaryWithInset.boundary,
+                  projection.positionInTerrainFrame, numberOfVertices,
+                  growthFactor);
 
-        std_msgs::msg::Header header;
-        header.stamp.nanosec = planarTerrainPtr->gridMap.getTimestamp();
-        header.frame_id = frameId;
+          std_msgs::msg::Header header;
+          // grid_map::Time is in nanoseconds
+          header.stamp = rclcpp::Time(
+              static_cast<int64_t>(planarTerrainPtr->gridMap.getTimestamp()));
+          header.frame_id = frameId;
 
-        auto convexRegionMsg = convex_plane_decomposition::to3dRosPolygon(
-            convexRegion, projection.regionPtr->transformPlaneToWorld, header);
+          auto convexRegionMsg = convex_plane_decomposition::to3dRosPolygon(
+              convexRegion, projection.regionPtr->transformPlaneToWorld, header);
 
-        convexTerrainPublisher->publish(convexRegionMsg);
-        positionPublisher->publish(toMarker(query, header));
-        projectionPublisher->publish(
-            toMarker(projection.positionInWorld, header));
+          convexTerrainPublisher->publish(convexRegionMsg);
+          positionPublisher->publish(toMarker(query, header));
+          projectionPublisher->publish(
+              toMarker(projection.positionInWorld, header));
+        }
       }
     }
 
-    rclcpp::spin(node);
+    // Process the terrain callback without blocking the loop
+    rclcpp::spin_some(node);
     rate.sleep();
   }
 

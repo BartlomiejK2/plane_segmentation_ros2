@@ -2,6 +2,10 @@
 // Created by rgrandia on 25.10.21.
 //
 
+#include <algorithm>
+#include <cmath>
+#include <limits>
+
 #include "rclcpp/rclcpp.hpp"
 
 #include <grid_map_core/GridMap.hpp>
@@ -29,8 +33,10 @@ void createNoise(size_t row, size_t col) {
       0.5 * grid_map::GridMap::Matrix::Random(row, col).array() + 0.5;
   grid_map::GridMap::Matrix gauss01 =
       u1.binaryExpr(u2, [&](float v1, float v2) {
-        return static_cast<float>(std::sqrt(-2.0f * log(v1)) *
-                                  cos(2.0f * M_PIf32 * v2));
+        // u1 can be 0, log(0) is -inf
+        const float v1Positive = std::max(v1, std::numeric_limits<float>::min());
+        return static_cast<float>(std::sqrt(-2.0f * std::log(v1Positive)) *
+                                  std::cos(2.0f * M_PIf32 * v2));
       });
 
   noiseLayer = noiseUniform * grid_map::GridMap::Matrix::Random(row, col) +

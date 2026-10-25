@@ -53,6 +53,7 @@ void outline(GridMap& map, const std::string& layerIn, const std::string& layerO
 
 /**
  * @brief Replaces values by output of a function. In-place operation (layerIn = layerOut) is NOT supported. Supports nan values.
+ * The function gets a kernelSize x kernelSize window centered at the cell. At the map border, entries outside of the map are nan.
  *
  * @param map           grid map
  * @param layerIn       reference layer (filter is applied wrt this layer)

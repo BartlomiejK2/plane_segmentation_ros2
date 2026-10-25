@@ -71,6 +71,28 @@ TEST(TestLookup, maxValue_in_middle_map) {  // NOLINT
   EXPECT_DOUBLE_EQ(result.value, checkMaxValue);
 }
 
+TEST(TestLookup, maxValue_position) {  // NOLINT
+  GridMap map;
+  map.setGeometry(Length(2.0, 2.0), 0.1, Position(0.0, 0.0));
+  map.add("elevation", 0.0);
+  auto& data = map.get("elevation");
+
+  // Single obstacle in the middle of the line
+  const grid_map::Position obstaclePosition(0.05, 0.05);
+  grid_map::Index obstacleIndex;
+  ASSERT_TRUE(map.getIndex(obstaclePosition, obstacleIndex));
+  data(obstacleIndex(0), obstacleIndex(1)) = 1.0;
+
+  const grid_map::Position position1(-0.85, 0.05);
+  const grid_map::Position position2(0.85, 0.05);
+  const auto result =
+      lookup::maxValueBetweenLocations(position1, position2, map, data);
+  ASSERT_TRUE(result.isValid);
+  EXPECT_DOUBLE_EQ(result.value, 1.0);
+  EXPECT_NEAR(result.position.x(), obstaclePosition.x(), 1e-9);
+  EXPECT_NEAR(result.position.y(), obstaclePosition.y(), 1e-9);
+}
+
 TEST(TestLookup, maxValue_onlyNaN) {  // NOLINT
   // Grid map with constant value.
   GridMap map;

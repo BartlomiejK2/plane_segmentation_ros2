@@ -122,6 +122,26 @@ TEST(TestResampling, resampleUpsample) {  // NOLINT
   EXPECT_DOUBLE_EQ(resampleMap.getResolution(), newRes);
 }
 
+TEST(TestResampling, resampleAllLayers) {  // NOLINT
+  GridMap map;
+  map.setGeometry(Length(3.0, 2.0), 0.5, Position(0.1, 0.2));
+  map.add("layer", 1.0);
+  map.add("other", 2.0);
+
+  inpainting::resample(map, "layer", 0.25);
+
+  // Layers that were not requested are resampled too, so they keep valid data
+  EXPECT_DOUBLE_EQ(map.getResolution(), 0.25);
+  for (const auto& layerName : map.getLayers()) {
+    EXPECT_EQ(map.get(layerName).rows(), map.getSize().x());
+    EXPECT_EQ(map.get(layerName).cols(), map.getSize().y());
+  }
+  EXPECT_TRUE((map.get("layer").array() == 1.0F).all());
+  EXPECT_TRUE((map.get("other").array() == 2.0F).all());
+
+  EXPECT_THROW(inpainting::resample(map, "missing", 0.5), std::out_of_range);
+}
+
 TEST(TestResampling, resampleDownsample) {  // NOLINT
   const std::string layerName = "layer";
   const double oldRes = 0.5;

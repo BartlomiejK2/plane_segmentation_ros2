@@ -50,12 +50,11 @@ void nonlinearInterpolation(GridMap& map, const std::string& layerIn,
 
 /**
  * @brief Up- or down-sample elevation map (open-cv function). In-place
- * operation only. Only the layer with name "layer" is resampled, while all
- * other layers (if there are any) are left untouched (exception if layer="all",
- * which applies filter to all layers).
+ * operation only. Changing the resolution changes the size of every layer,
+ * so all layers of the map are resampled.
  * @param map         grid map
- * @param layer       resampling is done based in this layer. If "all",
- * resamples all layers
+ * @param layer       layer that has to be resampled (throws std::out_of_range
+ * if it does not exist), or "all"
  * @param newRes      new resolution.
  */
 void resample(GridMap& map, const std::string& layer, double newRes);

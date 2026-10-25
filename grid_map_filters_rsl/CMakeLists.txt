@@ -38,17 +38,19 @@ ament_target_dependencies(${PROJECT_NAME} ${dependencies})
 #############
 ## Testing ##
 #############
-find_package(ament_lint_auto REQUIRED)
-ament_lint_auto_find_test_dependencies()
 
 ## GTest.
 if (BUILD_TESTING)
+    find_package(ament_lint_auto REQUIRED)
+    ament_lint_auto_find_test_dependencies()
+
     find_package(ament_cmake_gtest REQUIRED)
 
     ament_add_gtest(test_${PROJECT_NAME}
             test/TestDerivativeFilter.cpp
             test/TestFilters.cpp
             test/TestLookup.cpp
+            test/TestProcessing.cpp
     )
     ament_target_dependencies(test_${PROJECT_NAME} ${dependencies})
     target_link_libraries(test_${PROJECT_NAME} ${PROJECT_NAME})

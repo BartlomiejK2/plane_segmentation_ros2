@@ -258,8 +258,12 @@ void ConvexPlaneExtractionROS::callback(
     if (tfBuffer_.canTransform(targetFrameId_, messageMap.getFrameId(),
                                timeStamp, rclcpp::Duration::from_nanoseconds(0),
                                &errorMsg)) {
-      const auto transform =
-          getTransformToTargetFrame(messageMap.getFrameId(), timeStamp);
+      Eigen::Isometry3d transform;
+      if (!getTransformToTargetFrame(messageMap.getFrameId(), timeStamp,
+                                     transform)) {
+        callbackTimer_.endTimer();
+        return;
+      }
 
       messageMap = grid_map::getTransformedMap(std::move(messageMap), transform,
                                                elevationLayer_, targetFrameId_);
@@ -326,9 +330,10 @@ void ConvexPlaneExtractionROS::callback(
   callbackTimer_.endTimer();
 }
 
-Eigen::Isometry3d ConvexPlaneExtractionROS::getTransformToTargetFrame(
+bool ConvexPlaneExtractionROS::getTransformToTargetFrame(
     const std::string& sourceFrame,
-    const rclcpp::Time& time) {
+    const rclcpp::Time& time,
+    Eigen::Isometry3d& transformation) {
   geometry_msgs::msg::TransformStamped transformStamped;
   try {
     transformStamped =
@@ -336,10 +341,10 @@ Eigen::Isometry3d ConvexPlaneExtractionROS::getTransformToTargetFrame(
   } catch (tf2::TransformException& ex) {
     RCLCPP_ERROR(node_->get_logger(), "[ConvexPlaneExtractionROS] %s",
                  ex.what());
-    return Eigen::Isometry3d::Identity();
+    return false;
   }
 
-  Eigen::Isometry3d transformation;
+  transformation = Eigen::Isometry3d::Identity();
 
   // Extract translation.
   transformation.translation().x() = transformStamped.transform.translation.x;
@@ -352,7 +357,7 @@ Eigen::Isometry3d ConvexPlaneExtractionROS::getTransformToTargetFrame(
                                         transformStamped.transform.rotation.y,
                                         transformStamped.transform.rotation.z);
   transformation.linear() = rotationQuaternion.toRotationMatrix();
-  return transformation;
+  return true;
 }
 
 }  // namespace convex_plane_decomposition

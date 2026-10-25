@@ -117,7 +117,7 @@ std::vector<CgalPolygonWithHoles2d> extractPolygonsFromBinaryImage(const cv::Mat
 
       // Add children as holes
       int childIndex = hierarchy[i][2];  // First child
-      while (childIndex > 0) {
+      while (childIndex >= 0) {
         polygon.add_hole(cgalPolygonFromOpenCv(contours[childIndex]));
         childIndex = hierarchy[childIndex][0];  // Next child
       }

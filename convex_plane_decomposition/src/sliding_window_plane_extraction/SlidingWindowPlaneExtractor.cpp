@@ -59,12 +59,9 @@ void SlidingWindowPlaneExtractor::runExtraction(const grid_map::GridMap& map, co
   segmentedPlanesMap_.labelPlaneParameters.clear();
   const auto& mapSize = map_->getSize();
   binaryImagePatch_ = cv::Mat(mapSize(0), mapSize(1), CV_8U, 0.0);  // Zero initialize to set untouched pixels to not planar;
-  // Need a buffer of at least the linear size of the image. But no need to shrink if the buffer is already bigger.
+  // One normal per cell. assign keeps the allocated memory if the buffer is already big enough.
   const int linearMapSize = mapSize(0) * mapSize(1);
-  if (surfaceNormals_.size() < linearMapSize) {
-    surfaceNormals_.reserve(linearMapSize);
-    std::fill_n(surfaceNormals_.begin(), linearMapSize, Eigen::Vector3d::Zero());
-  }
+  surfaceNormals_.assign(linearMapSize, Eigen::Vector3d::Zero());
 
   // Run
   runSlidingWindowDetector();
