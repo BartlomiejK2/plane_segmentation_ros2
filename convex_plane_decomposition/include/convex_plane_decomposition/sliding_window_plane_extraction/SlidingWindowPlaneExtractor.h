@@ -58,6 +58,9 @@ class SlidingWindowPlaneExtractor {
   std::vector<Eigen::Vector3d> surfaceNormals_;
   std::vector<ransac_plane_extractor::PointWithNormal> pointsWithNormal_;
 
+  /// Linear indices of the cells of every label from the segmentation, reused between calls
+  std::vector<std::vector<int>> labelCellIndices_;
+
   cv::Mat binaryImagePatch_;
   SegmentedPlanesMap segmentedPlanesMap_;
 };

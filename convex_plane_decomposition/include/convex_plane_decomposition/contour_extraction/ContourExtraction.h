@@ -34,10 +34,12 @@ class ContourExtraction {
   cv::Mat binaryImage_;
 };
 
-/// Modifies the image in-place!
-std::vector<BoundaryWithInset> extractBoundaryAndInset(cv::Mat& binary_image, const cv::Mat& erosionKernel);
+/// Modifies the image in-place! Boundaries are simplified with boundarySimplificationEpsilon [(sub) pixels], 0 disables.
+std::vector<BoundaryWithInset> extractBoundaryAndInset(cv::Mat& binary_image, const cv::Mat& erosionKernel,
+                                                       double boundarySimplificationEpsilon = 0.0);
 
-std::vector<CgalPolygonWithHoles2d> extractPolygonsFromBinaryImage(const cv::Mat& binary_image);
+/// Contours are simplified with simplificationEpsilon [pixels] (Douglas-Peucker), 0 disables.
+std::vector<CgalPolygonWithHoles2d> extractPolygonsFromBinaryImage(const cv::Mat& binary_image, double simplificationEpsilon = 0.0);
 
 CgalPolygon2d cgalPolygonFromOpenCv(const std::vector<cv::Point>& openCvPolygon);
 

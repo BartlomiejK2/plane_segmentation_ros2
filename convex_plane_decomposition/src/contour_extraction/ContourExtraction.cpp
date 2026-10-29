@@ -36,14 +36,16 @@ std::vector<PlanarRegion> ContourExtraction::extractPlanarRegions(const Segmente
 
     // Try with safety margin
     cv::erode(binaryImage_, binaryImage_, marginKernel_, cv::Point(-1,-1), 1, cv::BORDER_REPLICATE);
-    auto boundariesAndInsets = contour_extraction::extractBoundaryAndInset(binaryImage_, insetKernel_);
+    auto boundariesAndInsets = contour_extraction::extractBoundaryAndInset(binaryImage_, insetKernel_,
+                                                                           parameters_.boundarySimplificationEpsilon);
 
     // If safety margin makes the region disappear -> try without
     if (boundariesAndInsets.empty()) {
       binaryImage_ = upSampledMap.labeledImage == label;
       // still 1 pixel erosion to remove the growth after upsampling
       cv::erode(binaryImage_, binaryImage_, insetKernel_, cv::Point(-1,-1), 1, cv::BORDER_REPLICATE);
-      boundariesAndInsets = contour_extraction::extractBoundaryAndInset(binaryImage_, insetKernel_);
+      boundariesAndInsets = contour_extraction::extractBoundaryAndInset(binaryImage_, insetKernel_,
+                                                                        parameters_.boundarySimplificationEpsilon);
     }
 
     const auto plane_parameters = getTransformLocalToGlobal(label_plane.second);
@@ -64,9 +66,10 @@ std::vector<PlanarRegion> ContourExtraction::extractPlanarRegions(const Segmente
   return planarRegions;
 }
 
-std::vector<BoundaryWithInset> extractBoundaryAndInset(cv::Mat& binary_image, const cv::Mat& erosionKernel) {
-  // Get boundary
-  std::vector<CgalPolygonWithHoles2d> boundaries = extractPolygonsFromBinaryImage(binary_image);
+std::vector<BoundaryWithInset> extractBoundaryAndInset(cv::Mat& binary_image, const cv::Mat& erosionKernel,
+                                                       double boundarySimplificationEpsilon) {
+  // Get boundary, only boundary is simplified (it is the shape the convex regions are grown in)
+  std::vector<CgalPolygonWithHoles2d> boundaries = extractPolygonsFromBinaryImage(binary_image, boundarySimplificationEpsilon);
 
   // Erode
   cv::erode(binary_image, binary_image, erosionKernel, cv::Point(-1,-1), 1, cv::BORDER_REPLICATE);
@@ -100,7 +103,7 @@ std::vector<BoundaryWithInset> extractBoundaryAndInset(cv::Mat& binary_image, co
   return boundariesWithInsets;
 }
 
-std::vector<CgalPolygonWithHoles2d> extractPolygonsFromBinaryImage(const cv::Mat& binary_image) {
+std::vector<CgalPolygonWithHoles2d> extractPolygonsFromBinaryImage(const cv::Mat& binary_image, double simplificationEpsilon) {
   std::vector<std::vector<cv::Point>> contours;
   std::vector<cv::Vec4i> hierarchy;  // [Next, Previous, First_Child, Parent]
   auto isOuterContour = [](const cv::Vec4i& hierarchyVector) {
@@ -108,6 +111,17 @@ std::vector<CgalPolygonWithHoles2d> extractPolygonsFromBinaryImage(const cv::Mat
   };
 
   cv::findContours(binary_image, contours, hierarchy, cv::RETR_CCOMP, cv::CHAIN_APPROX_SIMPLE);
+
+  if (simplificationEpsilon > 0.0) {
+    for (auto& contour : contours) {
+      std::vector<cv::Point> simplifiedContour;
+      cv::approxPolyDP(contour, simplifiedContour, simplificationEpsilon, true);
+      // Keep the original contour if simplification removes the area
+      if (simplifiedContour.size() >= 3) {
+        contour = std::move(simplifiedContour);
+      }
+    }
+  }
 
   std::vector<CgalPolygonWithHoles2d> plane_polygons;
   for (int i = 0; i < contours.size(); i++) {

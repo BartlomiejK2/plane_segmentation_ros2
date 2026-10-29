@@ -153,6 +153,22 @@ void SlidingWindowPlaneExtractor::extractPlaneParametersFromLabeledImage() {
   // Reserve a workvector that is reused between processing labels
   pointsWithNormal_.reserve(segmentedPlanesMap_.labeledImage.rows * segmentedPlanesMap_.labeledImage.cols);
 
+  // Collect cells of every label in one pass over the image, in the same (column-major) order as before.
+  // Processing a label only changes its own cells (to background or new labels), so the lists stay valid.
+  const auto& labeledImage = segmentedPlanesMap_.labeledImage;
+  labelCellIndices_.resize(numberOfExtractedPlanesWithoutRefinement + 1);
+  for (auto& cellIndices : labelCellIndices_) {
+    cellIndices.clear();
+  }
+  for (int col = 0; col < labeledImage.cols; ++col) {
+    for (int row = 0; row < labeledImage.rows; ++row) {
+      const int label = labeledImage.at<int>(row, col);
+      if (label > 0 && label <= numberOfExtractedPlanesWithoutRefinement) {
+        labelCellIndices_[label].push_back(getLinearIndex(row, col));
+      }
+    }
+  }
+
   // Skip label 0. This is the background, i.e. non-planar region.
   for (int label = 1; label <= numberOfExtractedPlanesWithoutRefinement; ++label) {
     computePlaneParametersForLabel(label, pointsWithNormal_);
@@ -167,24 +183,22 @@ void SlidingWindowPlaneExtractor::computePlaneParametersForLabel(int label,
   int numPoints = 0;
   Eigen::Vector3d sum = Eigen::Vector3d::Zero();
   Eigen::Matrix3d sumSquared = Eigen::Matrix3d::Zero();
-  for (int col = 0; col < segmentedPlanesMap_.labeledImage.cols; ++col) {
-    for (int row = 0; row < segmentedPlanesMap_.labeledImage.rows; ++row) {
-      if (segmentedPlanesMap_.labeledImage.at<int>(row, col) == label) {
-        double height = elevationData(row, col);
-        if (std::isfinite(height)) {
-          const Eigen::Vector3d point3d{segmentedPlanesMap_.mapOrigin.x() - row * segmentedPlanesMap_.resolution,
-                                        segmentedPlanesMap_.mapOrigin.y() - col * segmentedPlanesMap_.resolution, height};
+  for (const int linearIndex : labelCellIndices_[label]) {
+    const int row = linearIndex % mapRows_;
+    const int col = linearIndex / mapRows_;
+    double height = elevationData(row, col);
+    if (std::isfinite(height)) {
+      const Eigen::Vector3d point3d{segmentedPlanesMap_.mapOrigin.x() - row * segmentedPlanesMap_.resolution,
+                                    segmentedPlanesMap_.mapOrigin.y() - col * segmentedPlanesMap_.resolution, height};
 
-          ++numPoints;
-          sum += point3d;
-          sumSquared.noalias() += point3d * point3d.transpose();
+      ++numPoints;
+      sum += point3d;
+      sumSquared.noalias() += point3d * point3d.transpose();
 
-          const auto& localSurfaceNormal = surfaceNormals_[getLinearIndex(row, col)];
-          pointsWithNormal.emplace_back(
-              ransac_plane_extractor::Point3D(point3d.x(), point3d.y(), point3d.z()),
-              ransac_plane_extractor::Vector3D(localSurfaceNormal.x(), localSurfaceNormal.y(), localSurfaceNormal.z()));
-        }
-      }
+      const auto& localSurfaceNormal = surfaceNormals_[linearIndex];
+      pointsWithNormal.emplace_back(
+          ransac_plane_extractor::Point3D(point3d.x(), point3d.y(), point3d.z()),
+          ransac_plane_extractor::Vector3D(localSurfaceNormal.x(), localSurfaceNormal.y(), localSurfaceNormal.z()));
     }
   }
   if (numPoints < parameters_.min_number_points_per_label || numPoints < 3) {
@@ -301,7 +315,10 @@ bool SlidingWindowPlaneExtractor::isWithinInclinationLimit(const Eigen::Vector3d
 }
 
 void SlidingWindowPlaneExtractor::setToBackground(int label) {
-  segmentedPlanesMap_.labeledImage.setTo(0, segmentedPlanesMap_.labeledImage == label);
+  // Only cells collected for this label can have it, no need to compare the whole image
+  for (const int linearIndex : labelCellIndices_[label]) {
+    segmentedPlanesMap_.labeledImage.at<int>(linearIndex % mapRows_, linearIndex / mapRows_) = 0;
+  }
 }
 
 }  // namespace sliding_window_plane_extractor

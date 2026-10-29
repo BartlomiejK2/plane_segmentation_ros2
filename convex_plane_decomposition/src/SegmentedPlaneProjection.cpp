@@ -123,9 +123,9 @@ PlanarTerrainProjection getBestPlanarRegionAtPositionInWorld(const Eigen::Vector
   PlanarTerrainProjection projection;
   projection.cost = std::numeric_limits<double>::max();
   for (const auto& regionInfo : sortedRegions) {
-    // Skip based on lower bound
+    // Regions are sorted by the lower bound, so all remaining regions can be skipped
     if (distanceCostLowerbound(regionInfo.boundingBoxSquareDistance) > projection.cost) {
-      continue;
+      break;
     }
 
     // Region without inset has no area to project to (possible for regions received in a message)
